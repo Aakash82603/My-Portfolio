@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aakash Kumar Raut - Interactive Developer Portfolio</title>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Configure Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#00ff88',
+                        accent: '#ffd700',
+                        secondary: '#ff6b35',
+                        dark: '#0a1f1a',
+                        cyan: '#00d4ff',
+                    },
+                    backgroundImage: {
+                        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'float': 'float 3s ease-in-out infinite',
+                        'pulse-border': 'pulse-border 3s ease-in-out infinite',
+                        'glow-pulse': 'glow-pulse 2s ease-in-out infinite',
+                        'shimmer': 'shimmer 2.5s linear infinite',
+                        'fade-in': 'fadeIn 1s ease-out forwards',
+                        'slide-up': 'slideUp 0.8s ease-out forwards',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-15px)' },
+                        },
+                        'pulse-border': {
+                            '0%, 100%': { borderColor: 'rgba(0, 255, 136, 0.4)' },
+                            '50%': { borderColor: 'rgba(0, 255, 136, 1)' },
+                        },
+                        'glow-pulse': {
+                            '0%, 100%': { textShadow: '0 0 10px rgba(0, 255, 136, 0.5)' },
+                            '50%': { textShadow: '0 0 20px rgba(0, 255, 136, 1), 0 0 30px rgba(0, 255, 136, 0.8)' },
+                        },
+                        shimmer: {
+                            '0%': { backgroundPosition: '-1000px 0' },
+                            '100%': { backgroundPosition: '1000px 0' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: '0', transform: 'translateY(30px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Custom CSS Base -->
+    <style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply bg-slate-950 text-slate-200 overflow-x-hidden antialiased;
+            }
+        }
+        @layer utilities {
+            .glass {
+                @apply bg-dark/40 backdrop-blur-xl border border-primary/20;
+            }
+            .glass-card {
+                @apply bg-dark/60 backdrop-blur-md border border-slate-700/50 hover:border-primary/50 transition-all duration-300;
+            }
+            .text-gradient {
+                @apply bg-clip-text text-transparent bg-gradient-to-r;
+            }
+            .section-padding {
+                @apply py-20 px-6 md:px-12 lg:px-24 max-w-7xl mx-auto;
+            }
+            .particle {
+                position: fixed;
+                pointer-events: none;
+                z-index: 9999;
+                border-radius: 50%;
+            }
+            /* Grid Background */
+            .bg-grid {
+                background-size: 40px 40px;
+                background-image: 
+                    linear-gradient(to right, rgba(0, 255, 136, 0.05) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(0, 255, 136, 0.05) 1px, transparent 1px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- React Application -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // Custom Hook for Window Size
+        function useWindowSize() {
+            const [size, setSize] = useState([0, 0]);
+            useEffect(() => {
+                function updateSize() {
+                    setSize([window.innerWidth, window.innerHeight]);
+                }
+                window.addEventListener('resize', updateSize);
+                updateSize();
+                return () => window.removeEventListener('resize', updateSize);
+            }, []);
+            return size;
+        }
+
+        // --- COMPONENTS ---
+
+        // 1. Three.js Background Component
+        const ThreeBackground = () => {
+            const mountRef = useRef(null);
+
+            useEffect(() => {
+                if (!mountRef.current) return;
+
+                // Setup
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // optimize
+                mountRef.current.appendChild(renderer.domElement);
+
+                // Materials
+                const materialPrimary = new THREE.MeshBasicMaterial({ 
+                    color: 0x00ff88, 
+                    wireframe: true, 
+                    transparent: true, 
+                    opacity: 0.3 
+                });
+                const materialAccent = new THREE.MeshBasicMaterial({ 
+                    color: 0xffd700, 
+                    wireframe: true, 
+                    transparent: true, 
+                    opacity: 0.2 
+                });
+                const materialSecondary = new THREE.MeshBasicMaterial({ 
+                    color: 0xff6b35, 
+                    wireframe: true, 
+                    transparent: true, 
+                    opacity: 0.25 
+                });
+
+                // Geometries
+                const icosahedron = new THREE.Mesh(new THREE.IcosahedronGeometry(2, 0), materialPrimary);
+                const octahedron = new THREE.Mesh(new THREE.OctahedronGeometry(1.5, 0), materialAccent);
+                const tetrahedron = new THREE.Mesh(new THREE.TetrahedronGeometry(1.8, 0), materialSecondary);
+
+                // Positioning
+                icosahedron.position.set(-3, 1, -5);
+                octahedron.position.set(4, -2, -6);
+                tetrahedron.position.set(2, 3, -4);
+
+                // Add to scene
+                const objects = new THREE.Group();
+                objects.add(icosahedron);
+                objects.add(octahedron);
+                objects.add(tetrahedron);
+                scene.add(objects);
+
+                camera.position.z = 5;
+
+                // Mouse interaction for subtle camera movement
+                let mouseX = 0;
+                let mouseY = 0;
+                let targetX = 0;
+                let targetY = 0;
+
+                const windowHalfX = window.innerWidth / 2;
+                const windowHalfY = window.innerHeight / 2;
+
+                const onDocumentMouseMove = (event) => {
+                    mouseX = (event.clientX - windowHalfX) * 0.001;
+                    mouseY = (event.clientY - windowHalfY) * 0.001;
+                };
+
+                document.addEventListener('mousemove', onDocumentMouseMove);
+
+                // Animation Loop
+                let animationFrameId;
+                const animate = () => {
+                    targetX = mouseX * 2;
+                    targetY = mouseY * 2;
+
+                    // Smooth camera follow
+                    camera.position.x += (targetX - camera.position.x) * 0.02;
+                    camera.position.y += (-targetY - camera.position.y) * 0.02;
+                    camera.lookAt(scene.position);
+
+                    // Rotate objects
+                    icosahedron.rotation.x += 0.002;
+                    icosahedron.rotation.y += 0.003;
+                    
+                    octahedron.rotation.x -= 0.003;
+                    octahedron.rotation.y -= 0.002;
+                    
+                    tetrahedron.rotation.x += 0.004;
+                    tetrahedron.rotation.z += 0.002;
+
+                    // Float objects group
+                    objects.position.y = Math.sin(Date.now() * 0.001) * 0.5;
+
+                    renderer.render(scene, camera);
+                    animationFrameId = requestAnimationFrame(animate);
+                };
+
+                animate();
+
+                // Handle Resize
+                const handleResize = () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                };
+                window.addEventListener('resize', handleResize);
+
+                // Cleanup
+                return () => {
+                    cancelAnimationFrame(animationFrameId);
+                    window.removeEventListener('resize', handleResize);
+                    document.removeEventListener('mousemove', onDocumentMouseMove);
+                    if (mountRef.current) {
+                        mountRef.current.removeChild(renderer.domElement);
+                    }
+                    // Dispose geometries and materials
+                    icosahedron.geometry.dispose();
+                    octahedron.geometry.dispose();
+                    tetrahedron.geometry.dispose();
+                    materialPrimary.dispose();
+                    materialAccent.dispose();
+                    materialSecondary.dispose();
+                    renderer.dispose();
+                };
+            }, []);
+
+            return (
+                <div 
+                    ref={mountRef} 
+                    className="fixed inset-0 z-[-1] pointer-events-none opacity-50"
+                />
+            );
+        };
+
+        // 2. Particle Effect System
+        const ParticleEffects = () => {
+            useEffect(() => {
+                const colors = ['#00ff88', '#ffd700', '#ff6b35', '#00d4ff'];
+                
+                const createParticle = (x, y) => {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    
+                    // Random properties
+                    const size = Math.random() * 8 + 4;
+                    const color = colors[Math.floor(Math.random() * colors.length)];
+                    
+                    particle.style.width = `${size}px`;
+                    particle.style.height = `${size}px`;
+                    particle.style.background = color;
+                    particle.style.boxShadow = `0 0 ${size*2}px ${color}`;
+                    particle.style.left = `${x}px`;
+                    particle.style.top = `${y}px`;
+                    
+                    document.body.appendChild(particle);
+                    
+                    // Physics
+                    const angle = Math.random() * Math.PI * 2;
+                    const velocity = Math.random() * 5 + 2;
+                    let vx = Math.cos(angle) * velocity;
+                    let vy = Math.sin(angle) * velocity;
+                    let opacity = 1;
+                    let scale = 1;
+                    
+                    const animateParticle = () => {
+                        // Gravity & Drag
+                        vy += 0.1; // gravity
+                        vx *= 0.99; // drag
+                        
+                        // Update position
+                        const currentX = parseFloat(particle.style.left);
+                        const currentY = parseFloat(particle.style.top);
+                        
+                        particle.style.left = `${currentX + vx}px`;
+                        particle.style.top = `${currentY + vy}px`;
+                        
+                        // Fade and scale
+                        opacity -= 0.02;
+                        scale -= 0.01;
+                        
+                        particle.style.opacity = opacity;
+                        particle.style.transform = `translate(-50%, -50%) scale(${scale})`;
+                        
+                        if (opacity > 0) {
+                            requestAnimationFrame(animateParticle);
+                        } else {
+                            particle.remove();
+                        }
+                    };
+                    
+                    requestAnimationFrame(animateParticle);
+                };
+
+                const handleClick = (e) => {
+                    // Spawn 10-15 particles on click
+                    const particleCount = Math.floor(Math.random() * 6) + 10;
+                    for (let i = 0; i < particleCount; i++) {
+                        createParticle(e.clientX, e.clientY);
+                    }
+                };
+
+                window.addEventListener('click', handleClick);
+                return () => window.removeEventListener('click', handleClick);
+            }, []);
+
+            return null; // Logic-only component
+        };
+
+        // 3. Navigation Component
+        const Navbar = ({ activeSection }) => {
+            const [isOpen, setIsOpen] = useState(false);
+            const [scrolled, setScrolled] = useState(false);
+
+            useEffect(() => {
+                const handleScroll = () => {
+                    setScrolled(window.scrollY > 50);
+                };
+                window.addEventListener('scroll', handleScroll);
+                return () => window.removeEventListener('scroll', handleScroll);
+            }, []);
+
+            const navItems = [
+                { name: 'Home', href: '#home' },
+                { name: 'About', href: '#about' },
+                { name: 'Projects', href: '#projects' },
+                { name: 'Skills', href: '#skills' },
+                { name: 'Contact', href: '#contact' }
+            ];
+
+            return (
+                <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'glass py-4 shadow-lg shadow-primary/10 border-b border-primary/20' : 'bg-transparent py-6'}`}>
+                    <div className="max-w-7xl mx-auto px-6 md:px-12 flex justify-between items-center">
+                        {/* Logo */}
+                        <a href="#home" className="text-2xl font-black tracking-tighter animate-float relative group">
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-secondary">
+                                AAKASH RAUT
+                            </span>
+                            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-primary to-secondary transition-all duration-300 group-hover:w-full"></span>
+                        </a>
+
+                        {/* Desktop Nav */}
+                        <div className="hidden md:flex space-x-8">
+                            {navItems.map((item) => (
+                                <a 
+                                    key={item.name} 
+                                    href={item.href}
+                                    className={`relative text-sm font-medium tracking-wide transition-colors duration-300 hover:text-primary group
+                                        ${activeSection === item.name.toLowerCase() ? 'text-primary' : 'text-slate-300'}
+                                    `}
+                                >
+                                    {item.name}
+                                    <span className={`absolute -bottom-2 left-0 h-0.5 bg-gradient-to-r from-primary to-secondary transition-all duration-300 
+                                        ${activeSection === item.name.toLowerCase() ? 'w-full' : 'w-0 group-hover:w-full'}
+                                    `}></span>
+                                </a>
+                            ))}
+                        </div>
+
+                        {/* Mobile Menu Button */}
+                        <button 
+                            className="md:hidden text-slate-300 hover:text-primary transition-colors focus:outline-none"
+                            onClick={() => setIsOpen(!isOpen)}
+                        >
+                            <i data-lucide={isOpen ? 'x' : 'menu'} className="w-6 h-6"></i>
+                        </button>
+                    </div>
+
+                    {/* Mobile Menu Dropdown */}
+                    <div className={`md:hidden absolute w-full glass border-t border-primary/20 transition-all duration-300 overflow-hidden ${isOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                        <div className="flex flex-col px-6 py-4 space-y-4">
+                            {navItems.map((item) => (
+                                <a 
+                                    key={item.name} 
+                                    href={item.href}
+                                    className={`text-lg font-medium transition-colors ${activeSection === item.name.toLowerCase() ? 'text-primary' : 'text-slate-300 hover:text-primary'}`}
+                                    onClick={() => setIsOpen(false)}
+                                >
+                                    {item.name}
+                                </a>
+                            ))}
+                        </div>
+                    </div>
+                </nav>
+            );
+        };
+
+        // 4. Hero Section
+        const Hero = () => {
+            return (
+                <section id="home" className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
+                    {/* Background Gradients */}
+                    <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-blob"></div>
+                    <div className="absolute top-1/3 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl animate-blob" style={{animationDelay: '2s'}}></div>
+                    <div className="absolute bottom-1/4 left-1/2 w-96 h-96 bg-accent/20 rounded-full blur-3xl animate-blob" style={{animationDelay: '4s'}}></div>
+
+                    <div className="section-padding text-center relative z-10 w-full animate-slide-up">
+                        <div className="inline-block relative mb-4">
+                            <span className="px-4 py-1 rounded-full border border-primary/30 text-primary text-sm font-medium tracking-wider glass backdrop-blur-md">
+                                AVAILABLE FOR WORK
+                            </span>
+                        </div>
+                        
+                        <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tight leading-tight">
+                            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-secondary animate-shimmer" style={{backgroundSize: '200% auto'}}>
+                                AAKASH KUMAR RAUT
+                            </span>
+                        </h1>
+                        
+                        <h2 className="text-2xl md:text-3xl font-light text-slate-300 mb-8 max-w-3xl mx-auto">
+                            Full-Stack Developer <span className="text-primary px-2">|</span> AI Enthusiast <span className="text-accent px-2">|</span> 3D Web Developer
+                        </h2>
+                        
+                        <p className="text-lg md:text-xl text-slate-400 mb-12 max-w-2xl mx-auto leading-relaxed">
+                            I build interactive websites, AI-powered tools, and 3D experiences. 
+                            Passionate about combining web development and AI to create futuristic, 
+                            professional projects that stand out.
+                        </p>
+                        
+                        <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
+                            <a href="#projects" className="group relative px-8 py-4 bg-gradient-to-r from-primary to-cyan text-slate-950 font-bold rounded-lg text-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(0,255,136,0.6)] overflow-hidden">
+                                <span className="relative z-10 flex items-center gap-2">
+                                    View My Work 
+                                    <i data-lucide="arrow-right" className="w-5 h-5 group-hover:translate-x-1 transition-transform"></i>
+                                </span>
+                                <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                            </a>
+                            
+                            <a href="#contact" className="group px-8 py-4 border-2 border-primary text-primary font-bold rounded-lg text-lg transition-all duration-300 hover:bg-primary hover:text-slate-950 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)]">
+                                Let's Connect
+                            </a>
+                        </div>
+
+                        {/* Floating Emojis */}
+                        <div className="absolute top-1/4 left-10 text-4xl animate-float opacity-80 hidden md:block" style={{animationDelay: '0s'}}>💻</div>
+                        <div className="absolute top-1/3 right-10 text-5xl animate-float opacity-80 hidden md:block" style={{animationDelay: '1.5s', animationDuration: '4s'}}>🚀</div>
+                        <div className="absolute bottom-1/4 right-20 text-4xl animate-float opacity-80 hidden md:block" style={{animationDelay: '0.5s', animationDuration: '3.5s'}}>🤖</div>
+                    </div>
+                </section>
+            );
+        };
+
+        // 5. About Section
+        const About = () => {
+            return (
+                <section id="about" className="section-padding relative border-t border-primary/20">
+                    <div className="flex items-center gap-4 mb-16">
+                        <div className="h-1 w-12 bg-gradient-to-r from-primary to-accent rounded-full"></div>
+                        <h2 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
+                            About Me
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                        <div className="space-y-6 animate-slide-up">
+                            <p className="text-lg text-slate-300 leading-relaxed">
+                                I am currently a 3rd-year student pursuing my B.Tech in Computer Science & Engineering at Chandigarh University. My journey in tech is driven by an insatiable curiosity for how things work and a desire to build things that matter.
+                            </p>
+                            <p className="text-lg text-slate-300 leading-relaxed">
+                                With a strong interest in Web Development and AI, I strive to create visually stunning, performant, and intelligent applications. I believe in continuous learning and am currently diving deep into AI automation and advanced 3D web technologies.
+                            </p>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6 mt-6 border-t border-slate-700/50">
+                                <div className="flex items-center gap-3 glass-card p-4 rounded-lg">
+                                    <span className="text-2xl">📍</span>
+                                    <div>
+                                        <p className="text-xs text-slate-400">Location</p>
+                                        <p className="font-semibold text-primary">Chandigarh, India</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 glass-card p-4 rounded-lg">
+                                    <span className="text-2xl">🎓</span>
+                                    <div>
+                                        <p className="text-xs text-slate-400">Education</p>
+                                        <p className="font-semibold text-primary">B.Tech CSE (2028)</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3 glass-card p-4 rounded-lg sm:col-span-2">
+                                    <span className="text-2xl">⚡</span>
+                                    <div>
+                                        <p className="text-xs text-slate-400">Focus</p>
+                                        <p className="font-semibold text-primary">Beginner Developer | AI & Web Dev Enthusiast</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="relative group flex justify-center animate-slide-up" style={{animationDelay: '0.2s'}}>
+                            {/* Avatar Background Effects */}
+                            <div className="absolute inset-0 bg-gradient-to-br from-primary via-accent to-secondary rounded-3xl blur-2xl opacity-40 group-hover:opacity-60 transition-opacity duration-500 animate-pulse-border"></div>
+                            
+                            {/* Avatar Container */}
+                            <div className="relative glass border-2 border-primary/30 rounded-3xl p-12 w-full max-w-sm aspect-square flex items-center justify-center transform transition-transform duration-500 group-hover:scale-[1.02] group-hover:rotate-1">
+                                <span className="text-9xl animate-float filter drop-shadow-[0_0_15px_rgba(0,255,136,0.5)]">
+                                    👨‍💻
+                                </span>
+                                
+                                {/* Decorative elements */}
+                                <div className="absolute top-4 right-4 w-3 h-3 rounded-full bg-primary shadow-[0_0_10px_rgba(0,255,136,1)] animate-pulse"></div>
+                                <div className="absolute bottom-4 left-4 w-4 h-4 rounded-full bg-accent shadow-[0_0_10px_rgba(255,215,0,1)] animate-ping"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            );
+        };
+
+        // 6. Projects Section
+        const Projects = () => {
+            const projectsList = [
+                {
+                    title: 'AI Gesture Control 3D',
+                    desc: 'Interactive 3D website with hand gesture recognition controlling spatial elements.',
+                    tech: ['React', 'Three.js', 'TensorFlow.js', 'MediaPipe'],
+                    icon: '🎮',
+                    link: 'https://github.com/Aakash82603',
+                    bg: 'from-emerald-500 to-cyan-500'
+                },
+                {
+                    title: 'Interactive Portfolio',
+                    desc: 'Creative, maximalist portfolio featuring 3D animations and particle physics.',
+                    tech: ['React', 'Three.js', 'Tailwind', 'Canvas API'],
+                    icon: '✨',
+                    link: 'https://github.com/Aakash82603',
+                    bg: 'from-orange-500 to-red-500'
+                },
+                {
+                    title: 'AI Chatbot App',
+                    desc: 'Real-time chat application integrating AI for intelligent automated responses.',
+                    tech: ['React', 'Node.js', 'OpenAI API', 'Socket.io'],
+                    icon: '🤖',
+                    link: 'https://github.com/Aakash82603',
+                    bg: 'from-purple-500 to-pink-500'
+                },
+                {
+                    title: 'Web Scraper UI',
+                    desc: 'Automated data extraction tool with visual analytics dashboard.',
+                    tech: ['Python', 'Flask', 'Pandas', 'D3.js'],
+                    icon: '📊',
+                    link: 'https://github.com/Aakash82603',
+                    bg: 'from-emerald-600 to-yellow-500'
+                }
+            ];
+
+            return (
+                <section id="projects" className="section-padding relative">
+                    <div className="flex flex-col items-center mb-16">
+                        <h2 className="text-4xl md:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-secondary to-accent mb-4">
+                            Featured Projects
+                        </h2>
+                        <div className="h-1 w-24 bg-gradient-to-r from-secondary to-accent rounded-full"></div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {projectsList.map((project, index) => (
+                            <div key={index} 
+                                className="group relative glass-card p-6 md:p-8 rounded-2xl overflow-hidden hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,255,136,0.15)] hover:border-primary/50 transition-all duration-300"
+                            >
+                                {/* Gradient Hover Overlay */}
+                                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                                
+                                <div className="relative z-10">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl bg-gradient-to-br ${project.bg} shadow-lg shadow-black/50`}>
+                                            {project.icon}
+                                        </div>
+                                        <a href={project.link} target="_blank" rel="noopener noreferrer" 
+                                           className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors bg-dark/50 px-3 py-1.5 rounded-full border border-slate-700 hover:border-primary/50 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 duration-300">
+                                            <span className="text-sm font-semibold">Code</span>
+                                            <i data-lucide="github" className="w-4 h-4"></i>
+                                        </a>
+                                    </div>
+                                    
+                                    <h3 className="text-2xl font-bold text-slate-100 mb-3 group-hover:text-primary transition-colors">
+                                        {project.title}
+                                    </h3>
+                                    
+                                    <p className="text-slate-400 mb-6 line-clamp-2">
+                                        {project.desc}
+                                    </p>
+                                    
+                                    <div className="flex flex-wrap gap-2">
+                                        {project.tech.map((tech, i) => (
+                                            <span key={i} className="px-3 py-1 text-xs font-medium text-primary bg-primary/10 border border-primary/20 rounded-full group-hover:bg-primary/20 group-hover:border-primary/40 transition-colors">
+                                                {tech}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            );
+        };
+
+        // 7. Skills Section
+        const Skills = () => {
+            const skillCategories = [
+                {
+                    title: 'Frontend Development',
+                    icon: '🎨',
+                    color: 'from-emerald-400 to-emerald-600',
+                    skills: ['HTML5', 'CSS3', 'JavaScript', 'React', 'Tailwind', 'Three.js', 'SVG']
+                },
+                {
+                    title: 'Backend & Databases',
+                    icon: '⚙️',
+                    color: 'from-orange-400 to-red-500',
+                    skills: ['Node.js', 'Express.js', 'Python', 'MongoDB', 'Firebase', 'REST APIs']
+                },
+                {
+                    title: 'AI & Automation',
+                    icon: '🧠',
+                    color: 'from-cyan-400 to-blue-600',
+                    skills: ['TensorFlow.js', 'MediaPipe', 'OpenAI API', 'Scraping', 'Google Antigravity']
+                },
+                {
+                    title: 'Tools & Technologies',
+                    icon: '🛠️',
+                    color: 'from-gold-400 to-yellow-600',
+                    skills: ['Git', 'VS Code', 'Cursor AI', 'Postman', 'Linux', 'Docker Basics']
+                }
+            ];
+
+            return (
+                <section id="skills" className="section-padding relative">
+                     <div className="flex items-center gap-4 border-b border-primary/20 pb-4 mb-16 mx-auto w-max">
+                        <i data-lucide="zap" className="w-8 h-8 text-primary animate-pulse"></i>
+                        <h2 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary via-accent to-secondary">
+                            Technical Skills
+                        </h2>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {skillCategories.map((cat, idx) => (
+                            <div key={idx} className="glass border-t border-l border-primary/30 p-8 rounded-2xl relative overflow-hidden group hover:border-primary hover:shadow-[0_0_20px_rgba(0,255,136,0.1)] transition-all duration-300">
+                                {/* Background glow on hover */}
+                                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${cat.color} blur-[60px] opacity-10 group-hover:opacity-30 transition-opacity duration-500`}></div>
+                                
+                                <div className="flex items-center gap-4 mb-6 relative z-10">
+                                    <span className="text-4xl">{cat.icon}</span>
+                                    <h3 className="text-2xl font-bold text-slate-200 group-hover:text-primary transition-colors">
+                                        {cat.title}
+                                    </h3>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-3 relative z-10">
+                                    {cat.skills.map((skill, i) => (
+                                        <div key={i} className="px-4 py-2 bg-dark/80 border border-slate-700/50 rounded-lg text-sm font-medium text-slate-300 hover:text-primary hover:border-primary/50 hover:shadow-[0_0_15px_rgba(0,255,136,0.2)] hover:-translate-y-1 transition-all duration-300 cursor-default">
+                                            {skill}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            );
+        };
+
+        // 8. Contact Section
+        const Contact = () => {
+            const [formStatus, setFormStatus] = useState('');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                setFormStatus('sending');
+                // Simulate form submission
+                setTimeout(() => {
+                    setFormStatus('sent');
+                    e.target.reset();
+                    setTimeout(() => setFormStatus(''), 3000);
+                }, 1500);
+            };
+
+            return (
+                <section id="contact" className="section-padding relative pb-32 border-t border-slate-800">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="text-center mb-16">
+                            <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 animate-glow-pulse">
+                                Let's Build Something <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-cyan">Together</span>
+                            </h2>
+                            <p className="text-slate-400 text-lg max-w-2xl mx-auto">
+                                Whether you have a specific project in mind or just want to explore possibilities, 
+                                I'm always open to discussing new opportunities.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-5 gap-12">
+                            {/* Form */}
+                            <div className="md:col-span-3">
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="group">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Your Name" 
+                                            required
+                                            className="w-full bg-dark/60 border border-slate-700 rounded-lg px-4 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary focus:shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all"
+                                        />
+                                    </div>
+                                    <div className="group">
+                                        <input 
+                                            type="email" 
+                                            placeholder="Your Email" 
+                                            required
+                                            className="w-full bg-dark/60 border border-slate-700 rounded-lg px-4 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary focus:shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all"
+                                        />
+                                    </div>
+                                    <div className="group">
+                                        <textarea 
+                                            placeholder="Your Message" 
+                                            rows="5"
+                                            required
+                                            className="w-full bg-dark/60 border border-slate-700 rounded-lg px-4 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary focus:shadow-[0_0_15px_rgba(0,255,136,0.3)] transition-all resize-none"
+                                        ></textarea>
+                                    </div>
+                                    <button 
+                                        type="submit" 
+                                        disabled={formStatus === 'sending'}
+                                        className="w-full bg-gradient-to-r from-primary to-secondary text-slate-950 font-bold py-4 rounded-lg flex items-center justify-center gap-2 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(0,255,136,0.4)] transition-all duration-300 disabled:opacity-70 disabled:hover:scale-100"
+                                    >
+                                        {formStatus === 'sending' ? 'Sending...' : formStatus === 'sent' ? 'Message Sent!' : (
+                                            <>Send Message <i data-lucide="zap" className="w-5 h-5"></i></>
+                                        )}
+                                    </button>
+                                </form>
+                            </div>
+
+                            {/* Contact Info */}
+                            <div className="md:col-span-2 space-y-8">
+                                <div className="glass p-6 rounded-xl border-l-4 border-l-primary">
+                                    <h3 className="text-xl font-bold text-white mb-6">Direct Contact</h3>
+                                    
+                                    <div className="space-y-4">
+                                        <a href="mailto:aakashpatel26774@gmail.com" className="flex items-center gap-4 text-slate-300 hover:text-primary transition-colors group">
+                                            <div className="w-10 h-10 rounded-full bg-dark/80 border border-slate-700 flex items-center justify-center group-hover:border-primary group-hover:shadow-[0_0_10px_rgba(0,255,136,0.3)] transition-all">
+                                                <i data-lucide="mail" className="w-4 h-4"></i>
+                                            </div>
+                                            <span className="text-sm">aakashpatel26774@gmail.com</span>
+                                        </a>
+                                        
+                                        <div className="flex items-center gap-4 text-slate-300 group">
+                                            <div className="w-10 h-10 rounded-full bg-dark/80 border border-slate-700 flex items-center justify-center group-hover:border-primary transition-all">
+                                                <i data-lucide="phone" className="w-4 h-4"></i>
+                                            </div>
+                                            <span className="text-sm">+91 9955750160</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="glass p-6 rounded-xl border-l-4 border-l-accent">
+                                    <h3 className="text-xl font-bold text-white mb-6">Social Profiles</h3>
+                                    <div className="flex gap-4">
+                                        <a href="https://github.com/Aakash82603" target="_blank" rel="noopener noreferrer" 
+                                           className="w-12 h-12 rounded-full bg-dark/80 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-white hover:border-white hover:shadow-[0_0_15px_rgba(255,255,255,0.3)] transition-all hover:-translate-y-1">
+                                            <i data-lucide="github" className="w-5 h-5"></i>
+                                        </a>
+                                        <a href="https://www.linkedin.com/in/aakash-raut-75b1b0334/" target="_blank" rel="noopener noreferrer" 
+                                           className="w-12 h-12 rounded-full bg-dark/80 border border-slate-700 flex items-center justify-center text-slate-300 hover:text-[#0077b5] hover:border-[#0077b5] hover:shadow-[0_0_15px_rgba(0,119,181,0.4)] transition-all hover:-translate-y-1">
+                                            <i data-lucide="linkedin" className="w-5 h-5"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            );
+        };
+
+        // Footer
+        const Footer = () => {
+            return (
+                <footer className="border-t border-slate-800 bg-slate-950/80 backdrop-blur-lg">
+                    <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="text-center md:text-left">
+                            <p className="text-slate-400 font-medium">
+                                © 2026 Aakash Kumar Raut. 
+                            </p>
+                            <p className="text-sm text-slate-500 mt-1">
+                                Designed & Built with ❤️ in React & Three.js
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-900 border border-slate-800">
+                            <span className="text-xs text-slate-400">Student at</span>
+                            <span className="text-sm font-semibold text-transparent bg-clip-text bg-gradient-to-r from-accent to-secondary">
+                                Chandigarh University
+                            </span>
+                        </div>
+                    </div>
+                </footer>
+            );
+        };
+
+        // --- MAIN APP COMPONENT ---
+        const App = () => {
+            const [activeSection, setActiveSection] = useState('home');
+
+            // Initialize Lucide Icons after render
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            });
+
+            // Re-run icons on active section change just in case
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [activeSection]);
+
+            // Scroll Spy
+            useEffect(() => {
+                const observerOptions = {
+                    root: null,
+                    rootMargin: '-20% 0px -60% 0px',
+                    threshold: 0
+                };
+
+                const observerCallback = (entries) => {
+                    entries.forEach((entry) => {
+                        if (entry.isIntersecting) {
+                            setActiveSection(entry.target.id);
+                        }
+                    });
+                };
+
+                const observer = new IntersectionObserver(observerCallback, observerOptions);
+                const sections = document.querySelectorAll('section[id]');
+                
+                sections.forEach((section) => observer.observe(section));
+
+                return () => sections.forEach((section) => observer.unobserve(section));
+            }, []);
+
+            return (
+                <div className="relative bg-grid min-h-screen selection:bg-primary/30 selection:text-primary">
+                    <ThreeBackground />
+                    <ParticleEffects />
+                    
+                    <Navbar activeSection={activeSection} />
+                    
+                    <main>
+                        <Hero />
+                        <About />
+                        <Projects />
+                        <Skills />
+                        <Contact />
+                    </main>
+
+                    <Footer />
+                </div>
+            );
+        };
+
+        const rootNode = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootNode);
+        root.render(<App />);
+    </script>
+</body>
+</html>
